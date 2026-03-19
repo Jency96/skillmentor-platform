@@ -1,24 +1,31 @@
 import { Navigate, Outlet } from "react-router";
-import { useUser } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import { AdminSidebar } from "@/components/AdminSidebar";
 
 export default function AdminLayout() {
-    const { isLoaded, user } = useUser();
+    const { isLoaded: authLoaded, isSignedIn } = useAuth();
+    const { isLoaded: userLoaded, user } = useUser();
 
-    if (!isLoaded) {
+    if (!authLoaded || !userLoaded) {
         return (
             <div className="container py-10">
                 <div className="text-center text-lg">Loading admin area...</div>
             </div>
         );
     }
-    const isAdmin =
-    Array.isArray(user?.publicMetadata?.roles) &&
-    user.publicMetadata.roles.includes("ADMIN");
 
-  if (!isAdmin) {
-    return <Navigate to="/dashboard" replace />;
-  }
+    if (!isSignedIn) {
+        return <Navigate to="/login" replace />;
+    }
+
+    const isAdmin =
+        Array.isArray(user?.publicMetadata?.roles) &&
+        user.publicMetadata.roles.includes("ADMIN");
+        
+
+    if (!isAdmin) {
+        return <Navigate to="/dashboard" replace />;
+    }
 
     return (
         <div className="container py-8">

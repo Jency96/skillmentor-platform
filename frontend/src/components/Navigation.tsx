@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router";
+import { Link, NavLink } from "react-router";
 import { useAuth, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 import SkillMentorLogo from "@/assets/logo.webp";
 import { Menu } from "lucide-react";
@@ -7,14 +7,19 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 
+
+
+
 export function Navigation() {
   const { isSignedIn } = useAuth();
   const { user } = useUser();
   const [isOpen, setIsOpen] = useState(false);
 
+
   const isAdmin =
-  Array.isArray(user?.publicMetadata?.roles) &&
-  user.publicMetadata.roles.includes("ADMIN");
+    Array.isArray(user?.publicMetadata?.roles) &&
+    user.publicMetadata.roles.includes("ADMIN");
+
 
   const NavItems = ({ mobile = false }: { mobile?: boolean }) => (
     <nav
@@ -23,27 +28,50 @@ export function Navigation() {
         mobile && "flex-col items-start gap-4",
       )}
     >
-      <Link
+      <NavLink
         to="/"
         className="hover:text-primary transition-colors"
         onClick={() => mobile && setIsOpen(false)}
       >
         Tutors
-      </Link>
-      <Link
+      </NavLink>
+
+      <NavLink
         to="/"
         className="hover:text-primary transition-colors"
         onClick={() => mobile && setIsOpen(false)}
       >
         About Us
-      </Link>
-      <Link
+      </NavLink>
+
+      <NavLink
         to="/"
         className="hover:text-primary transition-colors"
         onClick={() => mobile && setIsOpen(false)}
       >
         Resources
-      </Link>
+      </NavLink>
+
+      {isAdmin ? (
+        <NavLink
+          to="/admin/subjects"
+          className="hover:text-primary transition-colors"
+          onClick={() => mobile && setIsOpen(false)}
+        >
+          Subjects
+        </NavLink>
+
+
+      ) : (
+        <NavLink
+          to="/subjects"
+          className="hover:text-primary transition-colors"
+          onClick={() => mobile && setIsOpen(false)}
+        >
+          Subjects
+        </NavLink>    
+    
+   )}
 
     </nav>
   );
@@ -109,6 +137,7 @@ export function Navigation() {
               Login
             </Button>
           </SignInButton>
+
           <Link to="/login">
             <Button
               className={cn(
@@ -159,7 +188,7 @@ export function Navigation() {
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            
+
             <SheetContent
               side="right"
               className="w-75 bg-black text-white p-6"

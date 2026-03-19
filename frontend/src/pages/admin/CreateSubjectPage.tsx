@@ -77,13 +77,15 @@ export default function CreateSubjectPage() {
         loadMentors();
     }, [getToken, toast]);
 
+    
+
     const onSubmit = async (values: SubjectFormValues) => {
         setSubmitting(true);
         try {
             const token = await getToken({ template: "skill-mentor" });
             if (!token) throw new Error("Not authenticated");
 
-            await createSubject(token, {
+            const newSubject = await createSubject(token, {
                 subjectName: values.subjectName,
                 description: values.description,
                 courseImageUrl: values.courseImageUrl,
@@ -92,10 +94,10 @@ export default function CreateSubjectPage() {
 
             toast({
                 title: "Subject created",
-                description: "The subject has been added successfully.",
+                description: `${newSubject.subjectName} has been added successfully.`,
             });
 
-            navigate("/admin");
+            navigate("/admin/subjects");
         } catch (error) {
             toast({
                 title: "Could not create subject",
