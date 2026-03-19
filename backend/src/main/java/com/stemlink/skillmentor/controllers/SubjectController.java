@@ -34,16 +34,7 @@ public class SubjectController {
         return subjectService.getSubjectById(id);
     }
 
-//    @PostMapping
-//    public Subject createSubject(@Valid @RequestBody Subject subject) {
-//        Long mentorId = 1L;
-//
-//        // check validation
-//        if(subject.getSubjectName().length() < 3){
-//            return null;
-//        }
-//        return subjectService.addNewSubject(mentorId, subject);
-//    }
+
 
     @PostMapping
     @PreAuthorize("hasRole('" + ROLE_ADMIN + "')")
