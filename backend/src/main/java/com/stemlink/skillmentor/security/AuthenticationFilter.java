@@ -21,45 +21,60 @@ import java.util.stream.Collectors;
 @Component
 @RequiredArgsConstructor
 public class AuthenticationFilter extends OncePerRequestFilter {
+
     private final TokenValidator tokenValidator;
 
     @Override
-    protected void doFilterInternal(@Nonnull HttpServletRequest request, @Nonnull HttpServletResponse response, @Nonnull FilterChain filterChain)
-            throws ServletException, IOException {
+    protected void doFilterInternal(
+            @Nonnull HttpServletRequest request,
+            @Nonnull HttpServletResponse response,
+            @Nonnull FilterChain filterChain
+    ) throws ServletException, IOException {
 
         String token = extractToken(request);
-        System.out.println("TOKEN FOUND: " + token);
 
-        if (token != null && tokenValidator.validateToken(token)) {
-            String userId = tokenValidator.extractUserId(token);
-//            List<String> roles = new ArrayList<>();
+        System.out.println("TOKEN FOUND: " + (token != null));
 
-            // extract user id, first name, last name, email from token
-            String email = tokenValidator.extractEmail(token);
-            String firstName = tokenValidator.extractFirstName(token);
-            String lastName = tokenValidator.extractLastName(token);
-
-            UserPrincipal userPrincipal = new UserPrincipal(userId,email,firstName,lastName);
-            //UserPrincipal userPrincipal = UserPrincipal.builder().id(userId)...
-
-
-            // Extract roles from the token
-            List<String> roles = tokenValidator.extractRoles(token);
-            System.out.println("ROLES: " + roles);
-
-            List<GrantedAuthority> authorities = roles != null ?
-                    roles.stream()
-                            .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
-                            .collect(Collectors.toList()) :
-                    new ArrayList<>();
-
-
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(userPrincipal, null, authorities);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+        if (token == null) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        System.out.println("AUTH SET");
+        // validate ONCE
+        boolean isValid = tokenValidator.validateToken(token);
+        System.out.println("TOKEN VALID: " + isValid);
+
+        if (!isValid) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String userId = tokenValidator.extractUserId(token);
+        String email = tokenValidator.extractEmail(token);
+        String firstName = tokenValidator.extractFirstName(token);
+        String lastName = tokenValidator.extractLastName(token);
+
+        UserPrincipal userPrincipal =
+                new UserPrincipal(userId, email, firstName, lastName);
+
+        List<String> roles = tokenValidator.extractRoles(token);
+        if (roles == null) roles = new ArrayList<>();
+
+        List<GrantedAuthority> authorities =
+                roles.stream()
+                        .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                        .collect(Collectors.toList());
+
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(
+                        userPrincipal,
+                        null,
+                        authorities
+                );
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        System.out.println("AUTH SUCCESS FOR USER: " + userId);
 
         filterChain.doFilter(request, response);
     }

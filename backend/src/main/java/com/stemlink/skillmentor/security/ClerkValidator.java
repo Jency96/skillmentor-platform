@@ -8,15 +8,16 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 import java.net.URL;
 import java.security.PublicKey;
 import java.util.List;
 
-
 @Slf4j
 @Component
+@Primary
 public class ClerkValidator implements TokenValidator {
 
     private final JwkProvider jwkProvider;
@@ -25,144 +26,66 @@ public class ClerkValidator implements TokenValidator {
         try {
             this.jwkProvider = new UrlJwkProvider(new URL(clerkJwksUrl));
         } catch (Exception e) {
-            log.error("Failed to initialize JwkProvider with URL: {}", clerkJwksUrl, e);
-            throw new RuntimeException("Failed to initialize Clerk validator", e);
+            log.error("Failed to init JWK provider", e);
+            throw new RuntimeException(e);
         }
     }
 
     @Override
-    public boolean validateToken(String token){
+    public boolean validateToken(String token) {
         try {
-            // Step 1: Decode JWT without verification to get header info
-            DecodedJWT decodedJWT = decodeToken(token);
-            if (decodedJWT == null) {
-                log.error("Failed to decode token");
-                return false;
-            }
+            DecodedJWT jwt = JWT.decode(token);
 
-            // Step 2: Extract key ID (kid) from the token header
-            String kid = decodedJWT.getKeyId();
-            if (kid == null || kid.isEmpty()) {
-                log.error("Token does not contain a key ID (kid)");
-                return false;
-            }
+            String kid = jwt.getKeyId();
+            if (kid == null) return false;
 
-            log.debug("Token kid: {}", kid);
+            Jwk jwk = jwkProvider.get(kid);
+            PublicKey publicKey = jwk.getPublicKey();
 
-            // Step 3: Fetch JWK and verify signature
-            if (!verifyTokenSignature(token, kid)) {
-                log.error("Token signature verification failed");
-                return false;
-            }
+            Algorithm algorithm =
+                    Algorithm.RSA256((java.security.interfaces.RSAPublicKey) publicKey, null);
 
-            log.debug("Token validation successful for subject: {}", decodedJWT.getSubject());
+            JWT.require(algorithm).build().verify(token);
+
             return true;
 
         } catch (Exception e) {
-            log.error("Error validating token: {}", e.getMessage());
+            log.error("Token validation failed: {}", e.getMessage());
             return false;
         }
     }
 
     @Override
     public String extractUserId(String token) {
-        try {
-            if (!validateToken(token)) {
-                return null;
-            }
-            DecodedJWT decodedJWT = decodeToken(token);
-            return decodedJWT != null ? decodedJWT.getSubject() : null;
-        } catch (Exception e) {
-            log.error("Error extracting user ID: {}", e.getMessage());
-            return null;
-        }
+        return JWT.decode(token).getSubject();
     }
 
     @Override
     public List<String> extractRoles(String token) {
         try {
-            if (!validateToken(token)) {
-                return List.of();
-            }
-
-            DecodedJWT decodedJWT = decodeToken(token);
-
-            if (decodedJWT == null) {
-                return List.of();
-            }
-
-            List<String> roles = decodedJWT.getClaim("roles").asList(String.class);
+            List<String> roles = JWT.decode(token)
+                    .getClaim("roles")
+                    .asList(String.class);
 
             return roles != null ? roles : List.of();
 
         } catch (Exception e) {
-            log.error("Error extracting roles: {}", e.getMessage());
             return List.of();
         }
     }
 
     @Override
     public String extractFirstName(String token) {
-        try {
-            DecodedJWT decodedJWT = decodeToken(token);
-            return decodedJWT != null ? decodedJWT.getClaim("first_name").asString() : null;
-        } catch (Exception e) {
-            log.error("Error extracting first name: {}", e.getMessage());
-            return null;
-        }
+        return JWT.decode(token).getClaim("firstName").asString();
     }
 
     @Override
     public String extractLastName(String token) {
-        try {
-            DecodedJWT decodedJWT = decodeToken(token);
-            return decodedJWT != null ? decodedJWT.getClaim("last_name").asString() : null;
-        } catch (Exception e) {
-            log.error("Error extracting last name: {}", e.getMessage());
-            return null;
-        }
+        return JWT.decode(token).getClaim("lastName").asString();
     }
 
     @Override
     public String extractEmail(String token) {
-        try {
-            DecodedJWT decodedJWT = decodeToken(token);
-            return decodedJWT != null ? decodedJWT.getClaim("email").asString() : null;
-        } catch (Exception e) {
-            log.error("Error extracting email: {}", e.getMessage());
-            return null;
-        }
+        return JWT.decode(token).getClaim("email").asString();
     }
-
-
-    private DecodedJWT decodeToken(String token) {
-        try {
-            return JWT.decode(token);
-        } catch (Exception e) {
-            log.error("Failed to decode token: {}", e.getMessage());
-            return null;
-        }
-    }
-
-    private boolean verifyTokenSignature(String token, String kid) {
-        try {
-            // Fetch the JWK from Clerk
-            Jwk jwk = jwkProvider.get(kid);
-
-            // Get the public key from the JWK
-            PublicKey publicKey = jwk.getPublicKey();
-
-            // Create algorithm and verify the token
-            Algorithm algorithm = Algorithm.RSA256((java.security.interfaces.RSAPublicKey) publicKey, null);
-            JWT.require(algorithm).build().verify(token);
-
-            log.debug("Token signature verified successfully for kid: {}", kid);
-            return true;
-
-        } catch (Exception e) {
-            log.error("Signature verification failed for kid {}: {}", kid, e.getMessage());
-            return false;
-        }
-    }
-
 }
