@@ -50,6 +50,9 @@ public class AuthenticationFilter extends OncePerRequestFilter {
                             .collect(Collectors.toList()) :
                     new ArrayList<>();
 
+            System.out.println("ROLES: " + roles);
+            System.out.println("AUTHORITIES: " + authorities);
+
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userPrincipal, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(authentication);
