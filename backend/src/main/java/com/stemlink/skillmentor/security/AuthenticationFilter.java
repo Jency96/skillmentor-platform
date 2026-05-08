@@ -28,6 +28,7 @@ public class AuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String token = extractToken(request);
+        System.out.println("TOKEN FOUND: " + token);
 
         if (token != null && tokenValidator.validateToken(token)) {
             String userId = tokenValidator.extractUserId(token);
@@ -44,19 +45,21 @@ public class AuthenticationFilter extends OncePerRequestFilter {
 
             // Extract roles from the token
             List<String> roles = tokenValidator.extractRoles(token);
+            System.out.println("ROLES: " + roles);
+
             List<GrantedAuthority> authorities = roles != null ?
                     roles.stream()
                             .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
                             .collect(Collectors.toList()) :
                     new ArrayList<>();
 
-            System.out.println("ROLES: " + roles);
-            System.out.println("AUTHORITIES: " + authorities);
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userPrincipal, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }
+
+        System.out.println("AUTH SET");
 
         filterChain.doFilter(request, response);
     }
