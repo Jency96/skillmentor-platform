@@ -33,8 +33,10 @@ public class ClerkValidator(string jwksUrl) : TokenValidator
     {
         try
         {
-            var raw = Claim(token, "roles");
-            return raw is null ? [] : System.Text.Json.JsonSerializer.Deserialize<List<string>>(raw) ?? [];
+            var payload = token.Split('.')[1];
+            using var json = System.Text.Json.JsonDocument.Parse(Base64UrlEncoder.DecodeBytes(payload));
+            return json.RootElement.TryGetProperty("roles", out var roles) && roles.ValueKind == System.Text.Json.JsonValueKind.Array
+                ? roles.EnumerateArray().Select(x => x.GetString() ?? "").ToList() : [];
         }
         catch { return []; }
     }

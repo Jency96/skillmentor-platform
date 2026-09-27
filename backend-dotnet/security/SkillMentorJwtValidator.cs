@@ -25,7 +25,12 @@ public class SkillMentorJwtValidator(string secretKey) : TokenValidator
     public string? ExtractEmail(string token) => null;
     public List<string> ExtractRoles(string token)
     {
-        try { return System.Text.Json.JsonSerializer.Deserialize<List<string>>(Claim(token, "roles") ?? "[]") ?? []; }
+        try
+        {
+            using var json = System.Text.Json.JsonDocument.Parse(Base64UrlEncoder.DecodeBytes(token.Split('.')[1]));
+            return json.RootElement.TryGetProperty("roles", out var roles) && roles.ValueKind == System.Text.Json.JsonValueKind.Array
+                ? roles.EnumerateArray().Select(x => x.GetString() ?? "").ToList() : [];
+        }
         catch { return []; }
     }
 }
