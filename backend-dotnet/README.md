@@ -47,7 +47,7 @@ Docker: run `docker compose -f backend-dotnet/docker-compose.yaml up --build` wi
 | `OncePerRequestFilter` and `TokenValidator` | `AuthenticationHandler` and `TokenValidator` | `security/AuthenticationFilter.cs` |
 | Auth0 JWKS / JWT; HMAC alternative | `JwtSecurityTokenHandler` with JWKS / symmetric key | `security/ClerkValidator.cs`, `SkillMentorJwtValidator.cs` |
 | Springdoc Swagger/OpenAPI | Swashbuckle `/swagger` | `configs/OpenApiConfig.cs` |
-| `@Cacheable` and `@CacheEvict`, optional Redis | `IDistributedCache` registration; see limitation below | `configs/RedisConfig.cs` |
+| `@Cacheable` and `@CacheEvict`, optional Redis | `IDistributedCache`, ten-minute mentor cache and versioned invalidation | `configs/RedisConfig.cs`, `services/impl/MentorServiceImpl.cs` |
 | `application*.properties`, `${ENV}` | `appsettings.json`, `IConfiguration`, `ConnectionStrings__...` | `SkillmentorApplication.cs` |
 | JUnit test | xUnit test | `../backend-dotnet.Tests/ValidationUtilsTest.cs` |
 | Maven Docker build | `dotnet publish` Docker build | `Dockerfile` |
@@ -72,7 +72,7 @@ Docker: run `docker compose -f backend-dotnet/docker-compose.yaml up --build` wi
 - Java admin mentor creation accepts `MentorDTO.mentorId` as optional, but the database entity requires a non-null `mentor_id` and the current React admin request does not send it. The port preserves the database constraint. An admin must supply a valid `mentorId` to create a mentor; this is a pre-existing interface mismatch.
 - `SubjectServiceImpl` and `SessionServiceImpl` look up the string `Mentor.MentorId` using the numeric `mentorId` from their DTOs, exactly as the source does. This is different from looking up `Mentor.Id`; check which identifier the frontend sends before changing it.
 - The React admin booking routes under `/api/v1/admin/sessions` have no corresponding Java controller in this repository. They have not been invented in the C# port.
-- Java `@Cacheable` and `@CacheEvict` decorate mentor reads and writes, with caching disabled in the source configuration. This port registers optional Redis and removes a key on writes, but does **not** cache mentor reads; enabling caching is a separate implementation task.
+- Java `@Cacheable` and `@CacheEvict` decorate mentor reads and writes, with caching disabled in the source configuration. The port caches mentor reads for ten minutes when `CACHE_ENABLED=true` and changes a version key on writes to invalidate all previous mentor entries. Old keys expire after ten minutes.
 - `ClerkValidator` checks the RS256 signature and token lifetime using the configured JWKS, as the Java validator does. For production, configure strict issuer and audience checking after confirming the Clerk token's intended claims.
 - The checked-in Java dev/prod properties include hard-coded secrets or credentials. They are intentionally omitted from the C# settings file. Rotate any live credentials exposed in repository history.
-- Database compatibility is defined by code mappings but has not been tested against the actual database. The current execution environment lacks the .NET SDK, PostgreSQL, and Clerk credentials; GitHub CI compiles and runs the translated availability tests on the proposed branch.
+- Database compatibility is defined by code mappings but has not been tested against the actual database. The local execution environment lacks the .NET SDK, PostgreSQL, and Clerk credentials; GitHub CI compiles and runs the translated availability tests on the proposed branch.
