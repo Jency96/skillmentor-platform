@@ -1,0 +1,15 @@
+name: ASP.NET Core backend
+on:
+  pull_request:
+    paths: ["backend-dotnet/**", "backend-dotnet.Tests/**", ".github/workflows/dotnet-test.yml"]
+  push:
+    paths: ["backend-dotnet/**", "backend-dotnet.Tests/**", ".github/workflows/dotnet-test.yml"]
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet test backend-dotnet.Tests/SkillMentor.Tests.csproj --configuration Release
